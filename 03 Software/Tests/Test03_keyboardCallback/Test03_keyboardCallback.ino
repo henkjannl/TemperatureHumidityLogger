@@ -14,40 +14,36 @@ const char* token =  "xxxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxx";  // Telegram t
 */
 #include "MyCredentials.h"
 
-WiFiClientSecure client;  
-AsyncTelegram2 myBot(client);
-
-InlineKeyboard inlineKeyboard; // inline keyboards object helper
-
-  inlineKeyboard.addButton("Download logfile",  ,  KeyboardButtonQuery, onDownload);
-  inlineKeyboard.addButton("Clear logfile",     , KeyboardButtonQuery, onClearLog);
-  // add a new empty button row
-  inlineKeyboard.addRow();
-  inlineKeyboard.addButton("Update status",     CB_STATUS,    KeyboardButtonQuery, onStatus);
-
-
 #define CB_DOWNLOAD  "cbDownload"
 #define CB_CLEAR_LOG "cbClearLog" 
 #define CB_STATUS    "cbStatus"
 
 const uint8_t LED = 4;
 
+// Global variables
+WiFiClientSecure client;  
+AsyncTelegram2 myBot(client);
+InlineKeyboard inlineKeyboard;
+
 // Callback functions definition for inline keyboard buttons
 void onDownload(const TBMessage &queryMsg){
   digitalWrite(LED, HIGH);
-  Serial.printf("Download function to be implemented here\nQueryId: %s ChatID: %d\n", queryMsg.callbackQueryID, queryMsg.chatId);
-  myBot.endQuery(queryMsg, "Light on", true);
+  //Serial.println("Download function to be implemented here");
+  Serial.printf("Download function to be implemented here\nQueryId: %d ChatID: %d\n", queryMsg.callbackQueryID, queryMsg.chatId);
+  //myBot.endQuery(queryMsg, "Light on", true);
 }
 
 void onClearLog(const TBMessage &queryMsg){
   digitalWrite(LED, LOW);
-  Serial.printf("Clear logfile to be implemented here\nQueryId: %s ChatID: %d\n", queryMsg.callbackQueryID, queryMsg.chatId);
-  myBot.endQuery(queryMsg, "Light on", false);
+  //Serial.println("Clear logfile to be implemented here");
+  Serial.printf("Clear logfile to be implemented here\nQueryId: %d ChatID: %d\n", queryMsg.callbackQueryID, queryMsg.chatId);
+  //myBot.endQuery(queryMsg, "Light on", false);
 }
 
 void onStatus(const TBMessage &queryMsg){
-  Serial.printf("Status update to be implemented here\nQueryId: %s ChatID: %d\n", queryMsg.callbackQueryID, queryMsg.chatId);
-  myBot.endQuery(queryMsg, "Status", true);
+  //Serial.println("Status update to be implemented here");
+  Serial.printf("Status update to be implemented here\nQueryId: %d ChatID: %d\n", queryMsg.callbackQueryID, queryMsg.chatId);
+  //myBot.endQuery(queryMsg, "Status", true);
 }
 
 void setup() {
