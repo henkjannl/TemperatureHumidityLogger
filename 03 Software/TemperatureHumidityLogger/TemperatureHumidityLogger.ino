@@ -14,8 +14,6 @@
 
 #include "FS.h"
 #include "SPIFFS.h"
-
-#include <time.h> 
 #include <map>
 
 #define VERSION "1.0.0"
