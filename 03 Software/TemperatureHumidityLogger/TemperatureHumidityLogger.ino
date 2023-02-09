@@ -46,6 +46,7 @@ std::map<String, String > ACCESS_POINTS {
 #define CB_DOWNLOAD  "cbDownload"
 #define CB_CLEAR_LOG "cbClearLog" 
 #define CB_STATUS    "cbStatus"
+#define CB_DEBUG     "cbDebug"
 
 // Temperature and logging
 #define TEMPERATURE_OFFSET -2.1         // Added to raw signal of thermometer
@@ -119,8 +120,6 @@ String convertToHexString( String input ) {
 
 // Callback functions definition for inline keyboard buttons
 void onDownload(const TBMessage &queryMsg){
-  Serial.printf("Download CSV file");
-
   Serial.println("Sending csv file from filesystem");
   File file = SPIFFS.open(LOG_FILE, "r");
   if (file) {
@@ -128,7 +127,7 @@ void onDownload(const TBMessage &queryMsg){
     file.close();
   }
   else
-    Serial.println("Can't open the file. Upload \"data\" folder to filesystem");
+    Serial.println("Can't open the file");
   
 }
 
@@ -152,7 +151,14 @@ void onStatus(const TBMessage &queryMsg){
     EMOTICON_DROPLETS, sensorData.humidity, 
     EMOTICON_PRESSURE, sensorData.pressure/100 ); 
   myBot.editMessage(queryMsg.chatId, queryMsg.messageID, String(msg), inlineKeyboard);
+  Serial.println(msg);
 }
+
+void onDebug(const TBMessage &queryMsg){
+  String msg = "WiFi connected to" + WiFi.SSID();
+  myBot.editMessage(queryMsg.chatId, queryMsg.messageID, msg, inlineKeyboard);
+  Serial.println(msg);  
+};
 
 void setup() {
   // initialize the Serial
@@ -168,15 +174,12 @@ void setup() {
 
   // Add wifi access points 
   for (const auto &ap : ACCESS_POINTS ) {
-    String accesspoint = ap.first;
-    String password = ap.second;
-    Serial.printf( "%s %s\n", accesspoint, password);
-    wifiMulti.addAP(accesspoint.c_str() , password.c_str() );
+    Serial.printf( "%s %s\n", ap.first.c_str(), ap.second.c_str() );
+    wifiMulti.addAP( ap.first.c_str(), ap.second.c_str() );
   }
 
   Serial.println("Connecting Wifi...");
   if(wifiMulti.run() == WL_CONNECTED) {
-    Serial.println("");
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
@@ -184,6 +187,8 @@ void setup() {
   else {
     Serial.println("WiFi not connected yet");
   }
+
+  WiFi.setAutoReconnect(true);
 
   // Sync time with NTP
   configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
@@ -206,6 +211,8 @@ void setup() {
   // add a new empty button row
   inlineKeyboard.addRow();
   inlineKeyboard.addButton("Update status",     CB_STATUS,    KeyboardButtonQuery, onStatus);
+  inlineKeyboard.addRow();
+  inlineKeyboard.addButton("Debug",             CB_DEBUG,     KeyboardButtonQuery, onDebug);
     
   // Add pointer to this keyboard to bot (in order to run callback function)
   myBot.addInlineKeyboard(&inlineKeyboard);
@@ -234,7 +241,7 @@ void loop() {
   // Add a new line to the csv file every 10 minutes
   time (&rawtime);
   timeinfo = localtime (&rawtime);
-  if( ( timeinfo->tm_min != prev_min ) and ( timeinfo->tm_min % LOG_INTERVAL == 0 ) ) {
+  if( ( timeinfo->tm_year > 80 ) and ( timeinfo->tm_min != prev_min ) and ( timeinfo->tm_min % LOG_INTERVAL == 0 ) ) {
     prev_min = timeinfo->tm_min;
     char msg[100];
     sensorData.readSensor(bme);
@@ -304,19 +311,5 @@ void loop() {
         default:
           break;
     }
-  }
-}
-
-
-void printHeapStats() {
-  time_t now = time(nullptr);
-  struct tm tInfo = *localtime(&now);
-  static uint32_t infoTime;
-  if (millis() - infoTime > 10000) {
-    infoTime = millis();
-
-  //heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
-  Serial.printf("\n%02d:%02d:%02d - Total free: %6d - Max block: %6d",
-    tInfo.tm_hour, tInfo.tm_min, tInfo.tm_sec, heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0) );
   }
 }
