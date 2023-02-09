@@ -167,7 +167,12 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   // Add wifi access points 
-  for (const auto &ap : ACCESS_POINTS ) wifiMulti.addAP(ap.first.c_str() , ap.second.c_str() );
+  for (const auto &ap : ACCESS_POINTS ) {
+    String accesspoint = ap.first;
+    String password = ap.second;
+    Serial.printf( "%s %s\n", accesspoint, password);
+    wifiMulti.addAP(accesspoint.c_str() , password.c_str() );
+  }
 
   Serial.println("Connecting Wifi...");
   if(wifiMulti.run() == WL_CONNECTED) {
@@ -176,12 +181,8 @@ void setup() {
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
   }
-    
-  WiFi.setAutoConnect(true);
-  delay(500);
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print('.');
-    delay(500);
+  else {
+    Serial.println("WiFi not connected yet");
   }
 
   // Sync time with NTP
@@ -217,6 +218,18 @@ void loop() {
   time_t rawtime;
   struct tm * timeinfo;
   static int prev_min = -1;
+  static bool wificonnectReported = false;
+
+  // Reconnect wifi if required
+  if(wifiMulti.run() != WL_CONNECTED) {
+    if (!wificonnectReported) {
+      Serial.println("WiFi not connected!");
+      wificonnectReported=true;
+    } 
+  } 
+  else {
+    wificonnectReported=false;
+  }
 
   // Add a new line to the csv file every 10 minutes
   time (&rawtime);
