@@ -43,10 +43,12 @@ std::map<String, String > ACCESS_POINTS {
 #include "MyCredentials.h"
 
 // Messages for he callback functions
-#define CB_DOWNLOAD  "cbDownload"
-#define CB_CLEAR_LOG "cbClearLog" 
-#define CB_STATUS    "cbStatus"
-#define CB_DEBUG     "cbDebug"
+#define CB_DOWNLOAD         "cbDownload"
+#define CB_CLEAR_LOG_MENU   "cbClearLogMenu" 
+#define CB_CLEAR_LOG_OK     "cbClearLogOK" 
+#define CB_CLEAR_LOG_CANCEL "cbClearLogCancel" 
+#define CB_STATUS           "cbStatus"
+#define CB_DEBUG            "cbDebug"
 
 // Temperature and logging
 #define TEMPERATURE_OFFSET -2.1         // Added to raw signal of thermometer
@@ -77,7 +79,7 @@ struct sensorData_t {
 WiFiMulti wifiMulti;
 WiFiClientSecure client;  
 AsyncTelegram2 myBot(client);
-InlineKeyboard inlineKeyboard;
+InlineKeyboard inlineKeyboard, clearLogMenu;
 Adafruit_BME280 bme; // I2C
 sensorData_t sensorData;
 
@@ -131,10 +133,21 @@ void onDownload(const TBMessage &queryMsg){
   
 }
 
-void onClearLog(const TBMessage &queryMsg){
+void onClearLogMenu(const TBMessage &queryMsg){
+  Serial.println("Pull up clear logfile menu");
+  //myBot.endQuery(queryMsg, "New logfile created", false);
+  myBot.editMessage(queryMsg.chatId, queryMsg.messageID, "Do you really want to clear the logfile?", clearLogMenu);
+}
+
+void onClearLogOK(const TBMessage &queryMsg){
   Serial.println("Clear logfile");
   newCSVfile();
-  myBot.endQuery(queryMsg, "New logfile created", false);
+  myBot.editMessage(queryMsg.chatId, queryMsg.messageID, "The logfile was cleared.", inlineKeyboard);
+}
+
+void onClearLogCancel(const TBMessage &queryMsg){
+  Serial.println("Clear logfile cancelled");
+  myBot.editMessage(queryMsg.chatId, queryMsg.messageID, "Clearing of logfile was cancelled.", inlineKeyboard);
 }
 
 void onStatus(const TBMessage &queryMsg){
@@ -206,20 +219,26 @@ void setup() {
   Serial.println(myBot.getBotName());
 
   // Add sample inline keyboard
-  inlineKeyboard.addButton("Download logfile",  CB_DOWNLOAD,  KeyboardButtonQuery, onDownload);
-  inlineKeyboard.addButton("Clear logfile",     CB_CLEAR_LOG, KeyboardButtonQuery, onClearLog);
+  inlineKeyboard.addButton("Download logfile",  CB_DOWNLOAD,       KeyboardButtonQuery, onDownload);
+  inlineKeyboard.addButton("Clear logfile",     CB_CLEAR_LOG_MENU, KeyboardButtonQuery, onClearLogMenu);
   // add a new empty button row
   inlineKeyboard.addRow();
-  inlineKeyboard.addButton("Update status",     CB_STATUS,    KeyboardButtonQuery, onStatus);
+  inlineKeyboard.addButton("Update status",     CB_STATUS,         KeyboardButtonQuery, onStatus);
   inlineKeyboard.addRow();
-  inlineKeyboard.addButton("Debug",             CB_DEBUG,     KeyboardButtonQuery, onDebug);
+  inlineKeyboard.addButton("Debug",             CB_DEBUG,          KeyboardButtonQuery, onDebug);
     
+  // Add OK cancel menu 
+  clearLogMenu.addButton("OK",      CB_CLEAR_LOG_OK,     KeyboardButtonQuery, onClearLogOK);
+  clearLogMenu.addButton("Cancel",  CB_CLEAR_LOG_CANCEL, KeyboardButtonQuery, onClearLogCancel);
+
   // Add pointer to this keyboard to bot (in order to run callback function)
   myBot.addInlineKeyboard(&inlineKeyboard);
+  myBot.addInlineKeyboard(&clearLogMenu);
 
   String text = String(EMOTICON_WELCOME) + " Welcome!";
   myBot.sendTo(userid, text.c_str(), inlineKeyboard.getJSON() );
 }
+
 
 void loop() {
   time_t rawtime;
