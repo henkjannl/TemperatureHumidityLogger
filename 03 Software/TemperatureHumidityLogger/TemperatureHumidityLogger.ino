@@ -16,17 +16,18 @@
 #include "SPIFFS.h"
 #include <map>
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 /* 
 1.0.0 Initial release
+1.0.1 Clear logfile behind OK/Cancel submenu
 
 To do:
-Clear logfile requires answering a yes/no question
-Structure with sensor data should also include CSV header and line
-Temperature calibration via Telegram
-Also calibrations for other signals?
-Report version if requested
-Include over the air update via Telegram
+- After downloading CSV file, send new keyboard instead of updating previous message
+- Structure with sensor data should also include CSV header and line
+- Temperature calibration via Telegram
+- Also calibrations for other signals?
+- Report version if requested under debug button
+- Include over the air update via Telegram
 */
  
 /*
@@ -168,7 +169,8 @@ void onStatus(const TBMessage &queryMsg){
 }
 
 void onDebug(const TBMessage &queryMsg){
-  String msg = "WiFi connected to" + WiFi.SSID();
+  String msg = String("Version ") + String(VERSION) +"\n" +
+               "WiFi connected to" + WiFi.SSID();
   myBot.editMessage(queryMsg.chatId, queryMsg.messageID, msg, inlineKeyboard);
   Serial.println(msg);  
 };
@@ -228,8 +230,8 @@ void setup() {
   inlineKeyboard.addButton("Debug",             CB_DEBUG,          KeyboardButtonQuery, onDebug);
     
   // Add OK cancel menu 
-  clearLogMenu.addButton("OK",      CB_CLEAR_LOG_OK,     KeyboardButtonQuery, onClearLogOK);
   clearLogMenu.addButton("Cancel",  CB_CLEAR_LOG_CANCEL, KeyboardButtonQuery, onClearLogCancel);
+  clearLogMenu.addButton("OK",      CB_CLEAR_LOG_OK,     KeyboardButtonQuery, onClearLogOK);
 
   // Add pointer to this keyboard to bot (in order to run callback function)
   myBot.addInlineKeyboard(&inlineKeyboard);
