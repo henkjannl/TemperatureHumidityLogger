@@ -62,6 +62,8 @@ const char EMOTICON_TEMPERATURE[] = { 0xf0, 0x9f, 0x8c, 0xa1, 0x00 };
 const char EMOTICON_PRESSURE[]    = { 0xf0, 0x9f, 0x8c, 0xaa, 0x00 };
 const char EMOTICON_WELCOME[]     = { 0xf0, 0x9f, 0x99, 0x8b, 0xe2, 0x80, 0x8d, 0xe2, 0x99, 0x80, 0xef, 0xb8, 0x8f, 0x00 };
 
+const char DEGREE_SYMBOL[]        = { 0xB0, '\0' };
+
 // Structure containing the sensor data
 struct sensorData_t {
   public:
@@ -100,8 +102,8 @@ void newCSVfile() {
       return;
   }
 
-  char msg[100] = "Date,Time,Temperature [°C],Humidity [%],Pressure [hPa],Day of week\n";
-  
+  char msg[100] = "Date,Time,Temperature [\xB0 C],Humidity [%],Pressure [hPa],Day of week\n";
+
   if(file.print(msg)){
       Serial.println("New CSV file created");
   } else {
@@ -159,7 +161,7 @@ void onStatus(const TBMessage &queryMsg){
     
   sensorData.readSensor(bme);
   char msg[100];
-  snprintf(msg, 100, "%02d:%02d %s %.1f°C %s %.1f%% %s %.1f hPa", 
+  snprintf(msg, 100, "%02d:%02d %s %.1f\xB0 C %s %.1f%% %s %.1f hPa", 
     timeinfo->tm_hour, timeinfo->tm_min, 
     EMOTICON_TEMPERATURE, sensorData.temperature, 
     EMOTICON_DROPLETS, sensorData.humidity, 
