@@ -62,8 +62,6 @@ const char EMOTICON_TEMPERATURE[] = { 0xf0, 0x9f, 0x8c, 0xa1, 0x00 };
 const char EMOTICON_PRESSURE[]    = { 0xf0, 0x9f, 0x8c, 0xaa, 0x00 };
 const char EMOTICON_WELCOME[]     = { 0xf0, 0x9f, 0x99, 0x8b, 0xe2, 0x80, 0x8d, 0xe2, 0x99, 0x80, 0xef, 0xb8, 0x8f, 0x00 };
 
-const char DEGREE_SYMBOL[]        = { 0xB0, '\0' };
-
 // Structure containing the sensor data
 struct sensorData_t {
   public:
@@ -72,9 +70,17 @@ struct sensorData_t {
     float humidity;
   
     void readSensor( Adafruit_BME280 &bme) {
-      temperature = bme.readTemperature() + TEMPERATURE_OFFSET;
-      pressure = bme.readPressure();
-      humidity = bme.readHumidity();
+      try {
+        temperature = bme.readTemperature() + TEMPERATURE_OFFSET;
+        pressure = bme.readPressure();
+        humidity = bme.readHumidity();
+      } 
+      catch (const std::exception& e) {
+        Serial.println("Error reading BME280");
+        temperature = 999;
+        pressure = 999;
+        humidity = 999;
+      }
     };
 };
 
@@ -102,7 +108,8 @@ void newCSVfile() {
       return;
   }
 
-  char msg[100] = "Date,Time,Temperature [\xB0 C],Humidity [%],Pressure [hPa],Day of week\n";
+  char msg[100] = "Date,Time,Temperature [°C],Humidity [%%],Pressure [hPa],Day of week\n";
+  Serial.print(msg);
 
   if(file.print(msg)){
       Serial.println("New CSV file created");
@@ -161,11 +168,13 @@ void onStatus(const TBMessage &queryMsg){
     
   sensorData.readSensor(bme);
   char msg[100];
-  snprintf(msg, 100, "%02d:%02d %s %.1f\xB0 C %s %.1f%% %s %.1f hPa", 
+  snprintf(msg, sizeof(msg), "%02d:%02d %s %.1f°C %s %.1f%% %s %.1f hPa", 
     timeinfo->tm_hour, timeinfo->tm_min, 
     EMOTICON_TEMPERATURE, sensorData.temperature, 
     EMOTICON_DROPLETS, sensorData.humidity, 
     EMOTICON_PRESSURE, sensorData.pressure/100 ); 
+  Serial.println(msg);
+  
   myBot.editMessage(queryMsg.chatId, queryMsg.messageID, String(msg), inlineKeyboard);
   Serial.println(msg);
 }
@@ -185,7 +194,12 @@ void setup() {
   SPIFFS.begin();
   
   // Start the BME280 temperature humidity pressure sensor
-  bme.begin(0x76);   
+  try {
+    bme.begin(0x76);   
+  } catch (const std::exception& e) {
+    Serial.println("Error initializing BME280");
+  }
+
 
   WiFi.mode(WIFI_STA);
 
