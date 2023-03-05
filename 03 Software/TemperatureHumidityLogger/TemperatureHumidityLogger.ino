@@ -17,6 +17,7 @@
 #include <map>
 
 #define VERSION "1.0.1"
+
 /* 
 1.0.0 Initial release
 1.0.1 Clear logfile behind OK/Cancel submenu
@@ -43,6 +44,14 @@ std::map<String, String > ACCESS_POINTS {
 */
 #include "MyCredentials.h"
 
+/*
+  ELECTRICAL CONNECTIONS
+  BME280   ESP32    
+  VCC      3V3
+  GND      GND
+  SCL      IO22
+  SDA      IO21
+*/
 // Messages for he callback functions
 #define CB_DOWNLOAD         "cbDownload"
 #define CB_CLEAR_LOG_MENU   "cbClearLogMenu" 
@@ -108,7 +117,7 @@ void newCSVfile() {
       return;
   }
 
-  char msg[100] = "Date,Time,Temperature [°C],Humidity [%%],Pressure [hPa],Day of week\n";
+  char msg[100] = "Date,Time,DateTime,Temperature [°C],Humidity [%%],Pressure [hPa],Day of week\n";
   Serial.print(msg);
 
   if(file.print(msg)){
@@ -200,7 +209,6 @@ void setup() {
     Serial.println("Error initializing BME280");
   }
 
-
   WiFi.mode(WIFI_STA);
 
   // Add wifi access points 
@@ -280,15 +288,16 @@ void loop() {
   timeinfo = localtime (&rawtime);
   if( ( timeinfo->tm_year > 80 ) and ( timeinfo->tm_min != prev_min ) and ( timeinfo->tm_min % LOG_INTERVAL == 0 ) ) {
     prev_min = timeinfo->tm_min;
-    char msg[100];
+    char msg[200];
     sensorData.readSensor(bme);
-    snprintf(msg, 100, "%04d-%02d-%02d,%02d:%02d,%.3f,%.3f,%.3f,%s\n", 
-       1900 + timeinfo->tm_year, timeinfo->tm_mon + 1, timeinfo->tm_mday,
-       timeinfo->tm_hour, timeinfo->tm_min,
-       sensorData.temperature,
-       sensorData.humidity, 
-       sensorData.pressure/100,
-       dayOfWeek[ timeinfo->tm_wday ] ); 
+    snprintf( msg, sizeof(msg), "%04d-%02d-%02d,%02d:%02d,%04d-%02d-%02d,%02d:%02d,%.3f,%.3f,%.3f,%s\n", 
+       1900 + timeinfo->tm_year, timeinfo->tm_mon + 1, timeinfo->tm_mday,                                        // Just the date
+       timeinfo->tm_hour, timeinfo->tm_min,                                                                      // Just the time
+       1900 + timeinfo->tm_year, timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min,   // Date and time
+       sensorData.temperature,                                                                                   // Temperature
+       sensorData.humidity,                                                                                      // Humidity
+       sensorData.pressure/100,                                                                                  // Pressure
+       dayOfWeek[ timeinfo->tm_wday ] );                                                                         // Day of week
 
     Serial.println("Append to CSV file");
     Serial.println(msg);
@@ -306,7 +315,6 @@ void loop() {
     }
     file.close();    
   }
-
   
   // a variable to store telegram message data
   TBMessage msg;
