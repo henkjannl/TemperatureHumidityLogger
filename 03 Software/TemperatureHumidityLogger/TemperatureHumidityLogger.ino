@@ -60,6 +60,8 @@ std::map<String, String > ACCESS_POINTS {
 #define CB_STATUS           "cbStatus"
 #define CB_DEBUG            "cbDebug"
 
+#define LED 2
+
 // Temperature and logging
 #define TEMPERATURE_OFFSET -2.1         // Added to raw signal of thermometer
 #define LOG_INTERVAL 10                 // Number of minutes between log intervals
@@ -117,7 +119,7 @@ void newCSVfile() {
       return;
   }
 
-  char msg[100] = "Date,Time,DateTime,Temperature [°C],Humidity [%%],Pressure [hPa],Day of week\n";
+  char msg[100] = "Date,Time,DateTime,Temperature [°C],Humidity [%],Pressure [hPa],Day of week\n";
   Serial.print(msg);
 
   if(file.print(msg)){
@@ -198,22 +200,27 @@ void onDebug(const TBMessage &queryMsg){
 void setup() {
   // initialize the Serial
   Serial.begin(115200);
+  pinMode(LED, OUTPUT);
 
   // Start the filesystem 
-  SPIFFS.begin();
+  Serial.println("Start SPIFFS");
+  SPIFFS.begin();  // This will always retain the existing logfile
+  // SPIFFS.begin( true ); // This will format SPIFFS for first time use
   
   // Start the BME280 temperature humidity pressure sensor
+  Serial.println("Start BME280");
   try {
     bme.begin(0x76);   
   } catch (const std::exception& e) {
     Serial.println("Error initializing BME280");
   }
 
+  Serial.println("Start wifi");
   WiFi.mode(WIFI_STA);
 
   // Add wifi access points 
   for (const auto &ap : ACCESS_POINTS ) {
-    Serial.printf( "%s %s\n", ap.first.c_str(), ap.second.c_str() );
+    Serial.printf( "%s\n", ap.first.c_str() );
     wifiMulti.addAP( ap.first.c_str(), ap.second.c_str() );
   }
 
@@ -230,10 +237,12 @@ void setup() {
   WiFi.setAutoReconnect(true);
 
   // Sync time with NTP
+  Serial.println("Sync with timeserver");
   configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
   client.setCACert(telegram_cert);
 
   // Set the Telegram bot properties
+  Serial.println("Start Telegram");
   myBot.setUpdateTime(1000);
   myBot.setTelegramToken(token);
   myBot.setMyCommands("/start", "start conversation");
@@ -261,6 +270,7 @@ void setup() {
   myBot.addInlineKeyboard(&inlineKeyboard);
   myBot.addInlineKeyboard(&clearLogMenu);
 
+  Serial.println("Start SPIFFS");
   String text = String(EMOTICON_WELCOME) + " Welcome!";
   myBot.sendTo(userid, text.c_str(), inlineKeyboard.getJSON() );
 }
@@ -288,9 +298,10 @@ void loop() {
   timeinfo = localtime (&rawtime);
   if( ( timeinfo->tm_year > 80 ) and ( timeinfo->tm_min != prev_min ) and ( timeinfo->tm_min % LOG_INTERVAL == 0 ) ) {
     prev_min = timeinfo->tm_min;
+    digitalWrite(LED, HIGH);   
     char msg[200];
     sensorData.readSensor(bme);
-    snprintf( msg, sizeof(msg), "%04d-%02d-%02d,%02d:%02d,%04d-%02d-%02d,%02d:%02d,%.3f,%.3f,%.3f,%s\n", 
+    snprintf( msg, sizeof(msg), "%04d-%02d-%02d,%02d:%02d,%04d-%02d-%02d %02d:%02d,%.3f,%.3f,%.3f,%s\n", 
        1900 + timeinfo->tm_year, timeinfo->tm_mon + 1, timeinfo->tm_mday,                                        // Just the date
        timeinfo->tm_hour, timeinfo->tm_min,                                                                      // Just the time
        1900 + timeinfo->tm_year, timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min,   // Date and time
@@ -314,6 +325,8 @@ void loop() {
         Serial.println("Append to CSV file failed");
     }
     file.close();    
+    delay(500);                      
+    digitalWrite(LED, LOW);
   }
   
   // a variable to store telegram message data
